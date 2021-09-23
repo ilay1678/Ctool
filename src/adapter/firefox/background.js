@@ -2,14 +2,14 @@ let windowId = null;
 // 打开独立窗口
 const panel = {
     create() {
-        chrome.windows.create({
-            url: chrome.runtime.getURL("tool.html"),
+        browser.windows.create({
+            url: browser.runtime.getURL("tool.html"),
             type: "popup",
-            width: 810,
-            left: 200,
-            top: 200,
-            height: 610,
         }, (w) => {
+            browser.windows.update(w.id, {
+                width: 810,
+                height: 610
+            });
             windowId = w.id
         })
     },
@@ -17,11 +17,11 @@ const panel = {
         if (windowId === null) {
             this.create()
         } else {
-            chrome.windows.get(windowId, (w) => {
+            browser.windows.get(windowId, (w) => {
                 if (!w) {
                     this.create()
                 } else {
-                    chrome.windows.update(windowId, {focused: true})
+                    browser.windows.update(windowId, {focused: true})
                 }
             })
         }
@@ -35,11 +35,10 @@ const panel = {
 }
 
 // 注册快捷键
-chrome.commands.onCommand.addListener((command) => {
+browser.commands.onCommand.addListener((command) => {
     switch (command) {
         case "panel":
             panel.open()
-
             break;
         default:
             return;
@@ -47,6 +46,6 @@ chrome.commands.onCommand.addListener((command) => {
 })
 
 // 窗口关闭事件
-chrome.windows.onRemoved.addListener((id) => {
+browser.windows.onRemoved.addListener((id) => {
     panel.onRemoved(id);
 })

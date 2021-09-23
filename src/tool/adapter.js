@@ -3,10 +3,11 @@ const _ = require('lodash');
 const fs = require('fs');
 // 运行平台适配
 let platform = process.env.hasOwnProperty('npm_config_adapter') ? process.env.npm_config_adapter : "";
-platform = ["chrome", 'utools', 'edge'].includes(platform) ? platform : "web"
+platform = ["chrome", 'utools', 'edge', 'firefox'].includes(platform) ? platform : "web"
 
 const IS_CHROME = "chrome" === platform
 const IS_EDGE = "edge" === platform
+const IS_FIREFOX = "firefox" === platform
 const IS_UTOOLS = "utools" === platform
 const IS_CHROMIUM = ['chrome', 'edge'].includes(platform)
 const IS_WEB = "web" === platform
@@ -30,8 +31,12 @@ const removeFile = (filePath) => {
     fs.existsSync(filePath) && fs.unlinkSync(filePath)
 }
 
-const chromeConfigWrite = () => {
-    if (IS_CHROME) {
+const chromeConfigWrite = {
+    remove(){},
+    write(){
+        if (!IS_CHROME){
+            return;
+        }
         fs.writeFileSync(
             path.join(__dirname, '../../public/manifest.json'),
             fs.readFileSync(path.join(__dirname, "../adapter/chrome/manifest.json")).toString().replace(/##version##/g, process.env.npm_package_version)
@@ -39,8 +44,12 @@ const chromeConfigWrite = () => {
     }
 }
 
-const edgeConfigWrite = () => {
-    if (IS_EDGE) {
+const edgeConfigWrite = {
+    remove(){},
+    write(){
+        if (!IS_EDGE){
+            return;
+        }
         fs.writeFileSync(
             path.join(__dirname, '../../public/manifest.json'),
             fs.readFileSync(path.join(__dirname, "../adapter/edge/manifest.json")).toString().replace(/##version##/g, process.env.npm_package_version)
@@ -48,24 +57,52 @@ const edgeConfigWrite = () => {
     }
 }
 
-const chromiumConfigWrite = () => {
-    // 移除环境配置文件
-    removeFile(path.join(__dirname, '../../public/manifest.json'));
-    let backgroundPath = path.join(__dirname, '../../public/background.js');
-    removeFile(backgroundPath);
-    if (IS_CHROMIUM) {
-        fs.copyFileSync(path.join(__dirname, "../adapter/chromium/background.js"), backgroundPath);
+const chromiumConfigWrite = {
+    remove(){
+        removeFile(path.join(__dirname, '../../public/manifest.json'));
+        removeFile(path.join(__dirname, '../../public/background.js'));
+    },
+    write(){
+        if (!IS_CHROMIUM){
+            return;
+        }
+        fs.copyFileSync(
+            path.join(__dirname, "../adapter/chromium/background.js"),
+            path.join(__dirname, '../../public/background.js')
+        );
     }
 }
 
-const utoolsConfigWrite = () => {
-    // 移除环境配置文件
-    let fileArr = ['plugin.json']
-    fileArr.forEach((file) => {
-        let filePath = path.join(__dirname, '../../public/' + file);
-        removeFile(filePath);
-    })
-    if (IS_UTOOLS) {
+const firefoxConfigWrite ={
+    remove(){
+        removeFile(path.join(__dirname, '../../public/manifest.json'));
+        removeFile(path.join(__dirname, '../../public/background.js'));
+    },
+    write(){
+        if (!IS_FIREFOX){
+            return;
+        }
+        fs.copyFileSync(
+            path.join(__dirname, "../adapter/firefox/background.js"),
+            path.join(__dirname, '../../public/background.js')
+        );
+        fs.writeFileSync(
+            path.join(__dirname, '../../public/manifest.json'),
+            fs.readFileSync(path.join(__dirname, "../adapter/firefox/manifest.json")).toString().replace(/##version##/g, process.env.npm_package_version)
+        );
+    }
+}
+
+
+
+const utoolsConfigWrite = {
+    remove(){
+        removeFile(path.join(__dirname, '../../public/plugin.json'));
+    },
+    write(){
+        if (!IS_UTOOLS){
+            return;
+        }
         let pluginPath = path.join(__dirname, '../../public/plugin.json');
         fs.readFile(path.join(__dirname, "../adapter/utools/plugin.json"), 'utf8', function (err, files) {
             if (err) return console.log(err);
@@ -141,13 +178,22 @@ module.exports = {
     platform: platform,
     isChrome: IS_CHROME,
     isChromium: IS_CHROMIUM,
+    isFirefox: IS_FIREFOX,
     isEdge: IS_EDGE,
     isWeb: IS_WEB,
     isUtools: IS_UTOOLS,
     initialize: function () {
-        chromiumConfigWrite();
-        chromeConfigWrite();
-        edgeConfigWrite();
-        utoolsConfigWrite();
+        // 移除配置文件
+        chromiumConfigWrite.remove();
+        chromeConfigWrite.remove();
+        edgeConfigWrite.remove();
+        firefoxConfigWrite.remove();
+        utoolsConfigWrite.remove();
+        // 添加配置文件
+        chromiumConfigWrite.write();
+        chromeConfigWrite.write();
+        edgeConfigWrite.write();
+        firefoxConfigWrite.write();
+        utoolsConfigWrite.write();
     }
 }
